@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.757
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CertificateGenerator", "src\CertificateGenerator\CertificateGenerator.csproj", "{685524A7-9703-4C2E-A0BC-50718370A369}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CertificateUtility", "src\CertificateUtility\CertificateUtility.csproj", "{0727BF30-A401-42E4-89A5-995183147CFC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{685524A7-9703-4C2E-A0BC-50718370A369}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{685524A7-9703-4C2E-A0BC-50718370A369}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{685524A7-9703-4C2E-A0BC-50718370A369}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{685524A7-9703-4C2E-A0BC-50718370A369}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0727BF30-A401-42E4-89A5-995183147CFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0727BF30-A401-42E4-89A5-995183147CFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0727BF30-A401-42E4-89A5-995183147CFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0727BF30-A401-42E4-89A5-995183147CFC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {61A3A931-19F7-444A-B2A6-2A092496F2C0}
+	EndGlobalSection
+EndGlobal
