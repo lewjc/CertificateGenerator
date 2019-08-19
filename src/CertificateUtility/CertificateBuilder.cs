@@ -16,7 +16,6 @@ namespace CertificateUtility
 {
   public class CertificateBuilder
   {
-
     private readonly int keyStrength;
 
     private readonly string signatureAlgorithm;
@@ -28,7 +27,7 @@ namespace CertificateUtility
     private AsymmetricCipherKeyPair keyPair;
 
     /// <summary>
-    /// 
+    /// Default constructer, uses default certificate parameters
     /// </summary>
     public CertificateBuilder()
     {
@@ -39,7 +38,7 @@ namespace CertificateUtility
     }
 
     /// <summary>
-    /// 
+    /// Allows for custom key strength to be provided.
     /// </summary>
     /// <param name="keyStrength"></param>
     public CertificateBuilder(int keyStrength)
@@ -50,7 +49,7 @@ namespace CertificateUtility
     }
 
     /// <summary>
-    /// 
+    /// Allows for a custom signature algorithm to be provided.
     /// </summary>
     /// <param name="signatureAlgorithm"></param>
     public CertificateBuilder(string signatureAlgorithm)
@@ -61,7 +60,7 @@ namespace CertificateUtility
     }
 
     /// <summary>
-    /// 
+    /// Allows for custom key strength and signature algorithm to be provided.
     /// </summary>
     /// <param name="keyStrength"></param>
     /// <param name="signatureAlgorithm"></param>
@@ -73,7 +72,7 @@ namespace CertificateUtility
     }
 
     /// <summary>
-    /// 
+    /// Initialise builder.
     /// </summary>
     private void Init()
     {
@@ -85,37 +84,64 @@ namespace CertificateUtility
       keyPair = keyPairGenerator.GenerateKeyPair();
     }
 
+    /// <summary>
+    /// Generates a random serial number to the certificate.
+    /// </summary>
+    /// <returns></returns>
     public CertificateBuilder AddSerialNumber()
     {
       certificateGenerator.SetSerialNumber(BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), secureRandom));
       return this;
     }
+
+    /// <summary>
+    /// Adds the provided serial number to the certificate. 
+    /// </summary>
+    /// <param name="serial"></param>
+    /// <returns></returns>
     public CertificateBuilder AddSerialNumber(BigInteger serial)
     {
       certificateGenerator.SetSerialNumber(serial);
       return this;
     }
 
+    /// <summary>
+    /// Adds the common name of the issuer to the certificate
+    /// </summary>
+    /// <param name="commonName"></param>
+    /// <returns></returns>
     public CertificateBuilder AddIssuerCommonName(string commonName)
     {
       certificateGenerator.SetIssuerDN(new X509Name(Helper.StringToCNString(commonName)));
       return this;
     }
+
+    /// <summary>
+    /// Adds the common name of the certificate
+    /// </summary>
+    /// <param name="commonName"></param>
+    /// <returns></returns>
     public CertificateBuilder AddSubjectCommonName(string commonName)
     {
       certificateGenerator.SetSubjectDN(new X509Name(Helper.StringToCNString(commonName)));
       return this;
     }
 
+    /// <summary>
+    /// Add a singular crl distribution point to the certificate
+    /// </summary>
+    /// <param name="url"></param>
+    /// <returns></returns>
     public CertificateBuilder AddCRLDistributionPoint(string url)
     {
-      var name = new GeneralName(GeneralName.UniformResourceIdentifier, url);
-      var dpName = new DistributionPointName(DistributionPointName.FullName, name);
-      var distributionPoint = new DistributionPoint(dpName, null, null);
-      certificateGenerator.AddExtension(X509Extensions.CrlDistributionPoints, false, new CrlDistPoint(new[] { distributionPoint }));
-      return this;
+      return AddCRLDistributionPoints(new string[] {url});
     }
 
+    /// <summary>
+    /// Attaches multiple distribution points to the certificate currently in the chain.
+    /// </summary>
+    /// <param name="urls">A list of http CRL locations</param>
+    /// <returns></returns>
     public CertificateBuilder AddCRLDistributionPoints(string[] urls)
     {
       var dps = new DistributionPoint[urls.Length];
@@ -130,7 +156,8 @@ namespace CertificateUtility
     }
 
     /// <summary>
-    /// 
+    /// Adds the authority key identifier to the certificate being generated. This allows 2 leaf certificates with the same CN to be
+    /// identified.
     /// </summary>
     /// <param name="issuingCA">The Certificate of the CA issuing this cert.</param>
     /// <returns></returns>
@@ -140,6 +167,12 @@ namespace CertificateUtility
       return this;
     }
 
+    /// <summary>
+    /// Adds the authority access information to the certificate, this specifies where the issuing certificate can be found.
+    /// can be through ldap and http.
+    /// </summary>
+    /// <param name="certificateUrl"></param>
+    /// <returns></returns>
     public CertificateBuilder AddAuthorityInfoAccess(string certificateUrl)
     {
       var authAccess = new AuthorityInformationAccess(new AccessDescription(
@@ -149,15 +182,21 @@ namespace CertificateUtility
       return this;
     }
 
+    /// <summary>
+    /// Sets the default validty time to 50 years.
+    /// </summary>
+    /// <returns></returns>
     public CertificateBuilder AddValidityTime()
     {
-      var notBefore = DateTime.UtcNow.Date;
-      var notAfter = notBefore.AddYears(50);
-      certificateGenerator.SetNotBefore(notBefore);
-      certificateGenerator.SetNotAfter(notAfter);
-      return this;
+     return AddValidityTime(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddYears(50));
     }
 
+    /// <summary>
+    /// Specify time that this certificate is valid from and is valid to.
+    /// </summary>
+    /// <param name="notBefore"></param>
+    /// <param name="notAfter"></param>
+    /// <returns></returns>
     public CertificateBuilder AddValidityTime(DateTime notBefore, DateTime notAfter)
     {
       certificateGenerator.SetNotBefore(notBefore);
@@ -165,6 +204,10 @@ namespace CertificateUtility
       return this;
     }
 
+    /// <summary>
+    /// Adds all extended key usages to the certficate
+    /// </summary>
+    /// <returns></returns>
     public CertificateBuilder AddExtendedKeyUsages()
     {
       certificateGenerator.AddExtension(oid: X509Extensions.ExtendedKeyUsage.Id,
@@ -172,6 +215,11 @@ namespace CertificateUtility
       return this;
     }
 
+    /// <summary>
+    /// Add specific extended key usages to the certificate
+    /// </summary>
+    /// <param name="extendedKeyUsages"></param>
+    /// <returns></returns>
     public CertificateBuilder AddExtendedKeyUsages(KeyPurposeID[] extendedKeyUsages)
     {
       certificateGenerator.AddExtension(oid: X509Extensions.ExtendedKeyUsage.Id,
@@ -207,6 +255,7 @@ namespace CertificateUtility
 
     /// <summary>
     /// Generates the certificate. This should be used for root/self signed certfificates as they will have no issuer.
+    /// This also returns the private key of the certificate generated.
     /// </summary>
     /// <returns></returns>
     public X509Certificate GenerateRootWithPrivateKey(out AsymmetricKeyParameter privateKey)
@@ -223,7 +272,7 @@ namespace CertificateUtility
     /// The private key of the CA issuing this certificate. Needed so that the certificates
     /// signature is valid.
     /// </param>
-    /// <returns></returns>
+    /// <returns>Bouncy Castle Certificate with parameters based on the configured chain.</returns>
     public X509Certificate Generate(AsymmetricKeyParameter issuerPrivateKey)
     {
       ISignatureFactory signatureFactory = new Asn1SignatureFactory(signatureAlgorithm, keyPair.Private, secureRandom);

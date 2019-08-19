@@ -21,7 +21,7 @@ namespace IsaCertificateGenerator
         },
         (CAGen options) =>
         {
-          return new CAGenerator(options, configuration).Execute();
+          return new CATask(options, configuration).Execute();
         },
         errs => 1);
     }

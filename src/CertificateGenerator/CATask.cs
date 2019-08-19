@@ -9,9 +9,9 @@ using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
 namespace IsaCertificateGenerator.CertificateUtility
 {
-  internal class CAGenerator : CertificateTask<CAGen>
+  internal class CATask : CertificateTask<CAGen>
   {
-    public CAGenerator(CAGen opts, IConfiguration configuration) : base(opts, configuration)
+    public CATask(CAGen opts, IConfiguration configuration) : base(opts, configuration)
     {
     }
 
@@ -28,6 +28,7 @@ namespace IsaCertificateGenerator.CertificateUtility
       AsymmetricKeyParameter issuingPrivateKey;
       X509Certificate2 storeCertificate = null;
 
+      // Root self signed certificate.
       if (isRoot)
       {
         // Builder path for Root CA
@@ -53,6 +54,9 @@ namespace IsaCertificateGenerator.CertificateUtility
 
         issuingPrivateKey = GetKeyPair(storeCertificate.PrivateKey).Private;
         var bouncyCastleCA = SystemToBcCertificate(storeCertificate);
+        
+        // Gets crl distribution point(s) from the user. Currently these are http locations that the CRL will exist on the network.
+        // Without these, certificate will fail standard X509 verification.
 
         string[] dpUrls = MenuInterupts.GetCrlDistributionPoints();
 

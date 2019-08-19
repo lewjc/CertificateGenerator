@@ -22,13 +22,11 @@ namespace IsaCertificateGenerator
       {
         throw new ArgumentException("Issuer name cannot be empty if you are generating a certificate.", nameof(Options.CommonName));
       }
-
-      GenerateCertificate(Options.CommonName, Options.IssuerName);
-
-      return SUCCESS;
+      
+      return RunInternal(Options.CommonName, Options.IssuerName);
     }
 
-    public int GenerateCertificate(string subjectName, string issuerName)
+    private int RunInternal(string subjectName, string issuerName)
     {
       // Builder path for Intermediate CA
       var storeCertificate = LoadCACertificate(Options.IssuerName);

@@ -18,7 +18,7 @@ namespace IsaCertificateGenerator
 {
   internal abstract class CertificateTask<TOptions> where TOptions : CLOptions
   {
-    private const string STOREPASSWORD = "CSI_Ma35tr0";
+    private const string STOREPASSWORD = "98DSFvc3fn393Jxxs";
 
     protected readonly int FAIL = 0;
 
@@ -86,26 +86,41 @@ namespace IsaCertificateGenerator
       return null;
     }
 
-    protected AsymmetricCipherKeyPair GetKeyPair(AsymmetricAlgorithm privateKey)
+    /// <summary>
+    /// Returns a key pair based on the algorithm used.
+    /// </summary>
+    /// <param name="privateKeyAlgorithm"></param>
+    /// <returns>Public and private key pair.</returns>
+    protected AsymmetricCipherKeyPair GetKeyPair(AsymmetricAlgorithm privateKeyAlgorithm)
     {
-      if (privateKey is DSA)
+      if (privateKeyAlgorithm is DSA)
       {
-        return GetDsaKeyPair((DSA)privateKey);
+        return GetDsaKeyPair((DSA)privateKeyAlgorithm);
       }
 
-      if (privateKey is RSA)
+      if (privateKeyAlgorithm is RSA)
       {
-        return GetRsaKeyPair((RSA)privateKey);
+        return GetRsaKeyPair((RSA)privateKeyAlgorithm);
       }
 
-      throw new ArgumentException("Unsupported algorithm specified", "privateKey");
+      throw new ArgumentException("Unsupported algorithm specified", "privateKeyAlgorithm");
     }
 
+    /// <summary>
+    /// Gets the DSA parameters from the dsa object, then creates the pair using DSA.
+    /// </summary>
+    /// <param name="dsa"></param>
+    /// <returns></returns>
     private AsymmetricCipherKeyPair GetDsaKeyPair(DSA dsa)
     {
       return GetDsaKeyPair(dsa.ExportParameters(true));
     }
 
+    /// <summary>
+    /// Generates the key pair based on DSA parameters passed in.
+    /// </summary>
+    /// <param name="dp">dsa parameters.</param>
+    /// <returns></returns>
     private AsymmetricCipherKeyPair GetDsaKeyPair(DSAParameters dp)
     {
       DsaValidationParameters validationParameters = (dp.Seed != null)
@@ -129,11 +144,21 @@ namespace IsaCertificateGenerator
       return new AsymmetricCipherKeyPair(pubKey, privKey);
     }
 
+    /// <summary>
+    /// Gets the RSA key parameters then generates the key pair
+    /// </summary>
+    /// <param name="rsa"></param>
+    /// <returns></returns>
     private AsymmetricCipherKeyPair GetRsaKeyPair(RSA rsa)
     {
       return GetRsaKeyPair(rsa.ExportParameters(true));
     }
 
+    /// <summary>
+    /// Uses the provieded parameters to generate the key pair.
+    /// </summary>
+    /// <param name="rp"></param>
+    /// <returns></returns>
     private AsymmetricCipherKeyPair GetRsaKeyPair(RSAParameters rp)
     {
       BigInteger modulus = new BigInteger(1, rp.Modulus);
@@ -157,6 +182,11 @@ namespace IsaCertificateGenerator
       return new AsymmetricCipherKeyPair(pubKey, privKey);
     }
 
+    /// <summary>
+    /// Converts an X509Certificate from System into a bouncy castle certificate.
+    /// </summary>
+    /// <param name="certificate"></param>
+    /// <returns></returns>
     protected Org.BouncyCastle.X509.X509Certificate SystemToBcCertificate(SystemX509.X509Certificate certificate)
     {
       return new X509CertificateParser().ReadCertificate(certificate.GetRawCertData());
@@ -199,6 +229,11 @@ namespace IsaCertificateGenerator
       return convertedCertificate;
     }
 
+    /// <summary>
+    /// Validates the provieded issuer certifcate object to ensure it is a valid certificate authority.
+    /// </summary>
+    /// <param name="issuerCertificate"></param>
+    /// <returns></returns>
     protected bool ValidateIssuer(X509Certificate2 issuerCertificate)
     {
       foreach (var extension in issuerCertificate.Extensions)
