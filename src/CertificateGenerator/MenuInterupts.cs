@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace IsaCertificateGenerator
+namespace CertificateGenerator
 {
-  public class MenuInterupts
+  internal class MenuInterupts
   {
     public bool GetCrlChoice()
     {
@@ -40,7 +40,7 @@ namespace IsaCertificateGenerator
       {
         string response = Console.ReadLine().ToLower();
 
-        if (response.Equals('x') && dps.Count > 0)
+        if (response.Equals("x") && dps.Count > 0)
         {
           return dps.ToArray();
         }
@@ -54,8 +54,8 @@ namespace IsaCertificateGenerator
             continue;
           }
 
-          Console.WriteLine("Valid Url added.");
-          dps.Add(validUrl.ToString());
+          Console.WriteLine($"Valid Url added => {url.AbsoluteUri}");
+          dps.Add(url.AbsoluteUri);
         }
       }
     }

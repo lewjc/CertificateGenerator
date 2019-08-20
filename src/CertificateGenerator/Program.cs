@@ -1,13 +1,12 @@
 ﻿using CommandLine;
-using IsaCertificateGenerator.CertificateUtility;
 using Microsoft.Extensions.Configuration;
 using System.IO;
 
-namespace IsaCertificateGenerator
+namespace CertificateGenerator
 {
-  internal class Program
+  public class Program
   {
-    private static void Main(string[] args)
+    public static void Main(string[] args)
     {
       var configuration = new ConfigurationBuilder()
         .SetBasePath(Directory.GetCurrentDirectory())
@@ -17,7 +16,7 @@ namespace IsaCertificateGenerator
       Parser.Default.ParseArguments<CertGen, CAGen>(args).MapResult(
         (CertGen options) =>
         {
-          return new CertificateGenerator(options, configuration).Execute();
+          return new CertificateTask(options, configuration).Execute();
         },
         (CAGen options) =>
         {

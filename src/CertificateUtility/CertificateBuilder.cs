@@ -9,7 +9,10 @@ using Org.BouncyCastle.Utilities;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.X509.Extension;
 using System;
+using System.ComponentModel;
 using System.Security.Cryptography.X509Certificates;
+using Org.BouncyCastle.Crypto.Digests;
+using Org.BouncyCastle.Crypto.Tls;
 using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
 namespace CertificateUtility
@@ -20,7 +23,7 @@ namespace CertificateUtility
 
     private readonly string signatureAlgorithm;
 
-    private SecureRandom secureRandom;
+    public SecureRandom SecureRandom { get; private set; }
 
     private X509V3CertificateGenerator certificateGenerator;
 
@@ -76,12 +79,13 @@ namespace CertificateUtility
     /// </summary>
     private void Init()
     {
-      secureRandom = new SecureRandom(new VmpcRandomGenerator());
+      SecureRandom = new SecureRandom(new CryptoApiRandomGenerator());
       certificateGenerator = new X509V3CertificateGenerator();
-      var keyGenerationParameters = new KeyGenerationParameters(secureRandom, keyStrength);
+      var keyGenerationParameters = new KeyGenerationParameters(SecureRandom, keyStrength);
       var keyPairGenerator = new RsaKeyPairGenerator();
       keyPairGenerator.Init(keyGenerationParameters);
       keyPair = keyPairGenerator.GenerateKeyPair();
+      certificateGenerator.SetPublicKey(keyPair.Public);
     }
 
     /// <summary>
@@ -90,7 +94,7 @@ namespace CertificateUtility
     /// <returns></returns>
     public CertificateBuilder AddSerialNumber()
     {
-      certificateGenerator.SetSerialNumber(BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), secureRandom));
+      certificateGenerator.SetSerialNumber(BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), SecureRandom));
       return this;
     }
 
@@ -161,9 +165,9 @@ namespace CertificateUtility
     /// </summary>
     /// <param name="issuingCA">The Certificate of the CA issuing this cert.</param>
     /// <returns></returns>
-    public CertificateBuilder AddAKID(X509Certificate issuingCA)
+    public CertificateBuilder AddAKID(AsymmetricKeyParameter publicKey)
     {
-      certificateGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(issuingCA));
+      certificateGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(publicKey));
       return this;
     }
 
@@ -230,16 +234,40 @@ namespace CertificateUtility
     /// <summary>
     /// Makes the current certificate in the build chain into a CA by attaching the necessary Key Usages and Basic Constraints.
     /// </summary>
-    public CertificateBuilder SetCA()
+    public CertificateBuilder MakeCA()
     {
-      var keyUsageCertSign = new KeyUsage((int)(X509KeyUsageFlags.CrlSign | X509KeyUsageFlags.KeyCertSign));
+      AddBasicConstraints(true);
+      AddKeyUsages((int) (X509KeyUsageFlags.CrlSign | X509KeyUsageFlags.KeyCertSign));
+      return this;
+    }
 
+    public CertificateBuilder AddSKID()
+    {      
+      certificateGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifierStructure(keyPair.Public));
+      return this;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="keyUsages"></param>
+    /// <returns></returns>
+    public CertificateBuilder AddKeyUsages(int keyUsages)
+    {
+      var keyUsageCertSign = new KeyUsage(keyUsages);
       certificateGenerator.AddExtension(X509Extensions.KeyUsage.Id, false, keyUsageCertSign);
+      return this;
+    }
 
-      var caConstraint = new BasicConstraints(true);
-
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="CA"></param>
+    /// <returns></returns>
+    public CertificateBuilder AddBasicConstraints(bool CA = false)
+    {
+      var caConstraint = new BasicConstraints(CA);
       certificateGenerator.AddExtension(X509Extensions.BasicConstraints.Id, false, caConstraint);
-
       return this;
     }
 
@@ -249,7 +277,7 @@ namespace CertificateUtility
     /// <returns></returns>
     public X509Certificate GenerateRoot()
     {
-      ISignatureFactory signatureFactory = new Asn1SignatureFactory(signatureAlgorithm, keyPair.Private, secureRandom);
+      ISignatureFactory signatureFactory = new Asn1SignatureFactory(signatureAlgorithm, keyPair.Private, SecureRandom);
       return certificateGenerator.Generate(signatureFactory);
     }
 
@@ -258,10 +286,10 @@ namespace CertificateUtility
     /// This also returns the private key of the certificate generated.
     /// </summary>
     /// <returns></returns>
-    public X509Certificate GenerateRootWithPrivateKey(out AsymmetricKeyParameter privateKey)
+    public X509Certificate GenerateRootWithPrivateKey(out AsymmetricCipherKeyPair keyPair)
     {
-      privateKey = keyPair.Private;
-      ISignatureFactory signatureFactory = new Asn1SignatureFactory(signatureAlgorithm, privateKey, secureRandom);
+      keyPair = this.keyPair;
+      ISignatureFactory signatureFactory = new Asn1SignatureFactory(signatureAlgorithm, keyPair.Private, SecureRandom);
       return certificateGenerator.Generate(signatureFactory);
     }
 
@@ -273,9 +301,10 @@ namespace CertificateUtility
     /// signature is valid.
     /// </param>
     /// <returns>Bouncy Castle Certificate with parameters based on the configured chain.</returns>
-    public X509Certificate Generate(AsymmetricKeyParameter issuerPrivateKey)
+    public X509Certificate Generate(AsymmetricKeyParameter issuerPrivateKey, out AsymmetricCipherKeyPair generatedKeyPair)
     {
-      ISignatureFactory signatureFactory = new Asn1SignatureFactory(signatureAlgorithm, keyPair.Private, secureRandom);
+      generatedKeyPair = keyPair;
+      ISignatureFactory signatureFactory = new Asn1SignatureFactory(signatureAlgorithm, issuerPrivateKey, SecureRandom);
       return certificateGenerator.Generate(signatureFactory);
     }
   }

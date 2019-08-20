@@ -80,9 +80,9 @@ namespace CertificateUtility
     /// </summary>
     /// <param name="issuingCA">The Certificate of the CA issuing this cert.</param>
     /// <returns></returns>
-    public CrlBuilder AddAKID(X509Certificate issuingCA)
+    public CrlBuilder AddAKID(AsymmetricKeyParameter publicKey)
     {
-      crlGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(issuingCA));
+      crlGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(publicKey));
       return this;
     }
 

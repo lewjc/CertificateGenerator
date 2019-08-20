@@ -7,9 +7,9 @@ using System.IO;
 using System.Security.Cryptography.X509Certificates;
 using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
-namespace IsaCertificateGenerator.CertificateUtility
+namespace CertificateGenerator
 {
-  internal class CATask : CertificateTask<CAGen>
+  internal class CATask : BaseCertificateTask<CAGen>
   {
     public CATask(CAGen opts, IConfiguration configuration) : base(opts, configuration)
     {
@@ -25,7 +25,8 @@ namespace IsaCertificateGenerator.CertificateUtility
       bool isRoot = string.IsNullOrEmpty(Options.IssuerName);
       var builder = new CertificateBuilder(Options.KeyStrength, Options.SignatureAlgorithm);
       X509Certificate bcCertificate;
-      AsymmetricKeyParameter issuingPrivateKey;
+      AsymmetricCipherKeyPair issuingKeyPair = null;
+      AsymmetricCipherKeyPair generatedKeyPair = null;
       X509Certificate2 storeCertificate = null;
 
       // Root self signed certificate.
@@ -33,18 +34,19 @@ namespace IsaCertificateGenerator.CertificateUtility
       {
         // Builder path for Root CA
         bcCertificate = builder
+          .AddSKID()
           .AddSerialNumber()
           .AddValidityTime()
           .AddExtendedKeyUsages()
           .AddSubjectCommonName(Options.CommonName)
           .AddIssuerCommonName(Options.CommonName) // Self Signed
-          .SetCA()
-          .GenerateRootWithPrivateKey(out issuingPrivateKey);
+          .MakeCA()
+          .GenerateRootWithPrivateKey(out issuingKeyPair);
       }
       else
       {
-        // Builder path for Intermediate CA
         storeCertificate = LoadCACertificate(Options.IssuerName);
+        builder = new CertificateBuilder(Options.KeyStrength, Options.SignatureAlgorithm);
 
         if (!ValidateIssuer(storeCertificate))
         {
@@ -52,27 +54,25 @@ namespace IsaCertificateGenerator.CertificateUtility
             "Provided certificate is not a valid CA and therefore cannot issue other certificates.");
         }
 
-        issuingPrivateKey = GetKeyPair(storeCertificate.PrivateKey).Private;
-        var bouncyCastleCA = SystemToBcCertificate(storeCertificate);
-        
-        // Gets crl distribution point(s) from the user. Currently these are http locations that the CRL will exist on the network.
-        // Without these, certificate will fail standard X509 verification.
+        issuingKeyPair = DotNetUtilities.GetKeyPair(storeCertificate.PrivateKey); ;
 
         string[] dpUrls = MenuInterupts.GetCrlDistributionPoints();
 
         bcCertificate = builder
+          .AddSKID()
           .AddSerialNumber()
           .AddValidityTime()
           .AddExtendedKeyUsages()
           .AddSubjectCommonName(Options.CommonName)
-          .AddIssuerCommonName(Options.CommonName) // Generate from CA.
-          .SetCA()
+          .AddIssuerCommonName(Options.IssuerName) // Generate from CA.
+          .MakeCA()
+          .AddAKID(issuingKeyPair.Public)
           .AddCRLDistributionPoints(dpUrls)
-          .Generate(issuingPrivateKey);
+          .Generate(issuingKeyPair.Private, out generatedKeyPair);
       }
 
       var convertedCertificate = GetWindowsCertFromGenerated(bcCertificate,
-        bcCertificate.SubjectDN.ToString(), issuingPrivateKey, new SecureRandom());
+        Options.CommonName, isRoot ? issuingKeyPair.Private : generatedKeyPair.Private, builder.SecureRandom);
 
       if (!string.IsNullOrEmpty(Options.ExportLocation))
       {
@@ -83,7 +83,7 @@ namespace IsaCertificateGenerator.CertificateUtility
       else
       {
         // Add CA certificate to Root store
-        var machineStore = new X509Store(StoreName.Root, StoreLocation.LocalMachine);
+        var machineStore = new X509Store(isRoot ? StoreName.Root : StoreName.CertificateAuthority, StoreLocation.LocalMachine);
         machineStore.Open(OpenFlags.ReadWrite);
 
         machineStore.Add(convertedCertificate);
@@ -99,11 +99,12 @@ namespace IsaCertificateGenerator.CertificateUtility
         var crl = crlBuilder
           .AddIssuerName(isRoot ? Options.CommonName : Options.IssuerName)
           .AddUpdatePeriod()
-          .AddAKID(isRoot ? bcCertificate : SystemToBcCertificate(storeCertificate))
-          .Generate(issuingPrivateKey);
+          .AddAKID(issuingKeyPair.Public)
+          .Generate(issuingKeyPair.Private);
 
+        var crlPostFix = Configuration["certificateSettings:crlPostFix"];
         var exportPath = Path.Join(Configuration["certificateSettings:crlExportPath"],
-          $@"{Options.CommonName}_CRL.crl");
+          $"{Options.CommonName}{crlPostFix}.crl");
         File.WriteAllBytes(exportPath, crl.GetEncoded());
       }
 
