@@ -2,7 +2,7 @@
   "profiles": {
     "CertificateGenerator": {
       "commandName": "Project",
-      "commandLineArgs": "CA --commonname LewisRootCA --debug true"
+      "commandLineArgs": "Cert --commonname LewisCertificate --issuer LewisIntermediateCA --debug true --distributionpoints http://localhost:8080/crl/lewisintermediateca_crl.crl"
     }
   }
 }

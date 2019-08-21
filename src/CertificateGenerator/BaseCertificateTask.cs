@@ -34,7 +34,7 @@ namespace CertificateGenerator
       Options = opts;
       Configuration = configuration;
       Logger = logFactory.GetLogger(GetType().Name);
-      MenuInterupts = new MenuInterupts(Logger);
+      MenuInterupts = new MenuInterupts();
     }
 
     public int Execute()
@@ -189,6 +189,19 @@ namespace CertificateGenerator
       }
 
       return issuerCertificate.Verify();
+    }
+
+    protected void DisplayCertificateDebugInfo(X509Certificate2 certificate)
+    {
+      Logger.Debug($"[SUBJECT NAME] => {certificate.SubjectName.Name}");
+      Logger.Debug($"[SERIAL NUMBER] => {certificate.SerialNumber}");
+      Logger.Debug($"[THUMBPRINT] => {certificate.Thumbprint}");
+      Logger.Debug($"[FREINDLY NAME] => {certificate.FriendlyName}");
+      Logger.Debug($"[SIGNATURE ALGORITHM] => {certificate.SignatureAlgorithm.FriendlyName}");
+      Logger.Debug($"[KEYALGORITHM] => {certificate.GetKeyAlgorithm()}");
+      Logger.Debug($"[KEY ALGORITHM PARAMETERS] => {certificate.GetKeyAlgorithmParametersString()}");
+      Logger.Debug($"[VERSION] => {certificate.Version}");
+      Logger.Debug($"[VALID] => {certificate.Verify()}");
     }
   }
 }

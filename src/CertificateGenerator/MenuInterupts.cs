@@ -10,9 +10,9 @@ namespace CertificateGenerator
 
     private readonly ILogger logger;
 
-    internal MenuInterupts(ILogger logger)
+    internal MenuInterupts()
     {
-
+      logger = LogManager.GetCurrentClassLogger();
     }
 
     public bool GetCrlChoice()
@@ -21,7 +21,7 @@ namespace CertificateGenerator
       while (choice == null)
       {
         logger.Info("Would you like to generate a CRL for this CA? [y]/[n]: ");
-        string response = Console.ReadLine().ToLower();
+        string response = GetResponse();
 
         switch (response)
         {
@@ -48,7 +48,7 @@ namespace CertificateGenerator
       logger.Info("Please provide atleast one URL for your certificate revocation lists. Press [X] when done.");
       while (true)
       {
-        string response = Console.ReadLine().ToLower();
+        string response = GetResponse();
 
         if (response.Equals("x") && dps.Count > 0)
         {
@@ -56,8 +56,8 @@ namespace CertificateGenerator
         }
         else
         {
-          bool validUrl = Uri.TryCreate(response, UriKind.Absolute, out Uri url) && url.Scheme == Uri.UriSchemeHttp ||
-                          url.Scheme == Uri.UriSchemeHttps;
+          bool validUrl = Uri.TryCreate(response, UriKind.Absolute, out Uri url) && url?.Scheme == Uri.UriSchemeHttp ||
+                          url?.Scheme == Uri.UriSchemeHttps;
           if (!validUrl)
           {
             logger.Error("Invalid Url.");
@@ -68,6 +68,12 @@ namespace CertificateGenerator
           dps.Add(url.AbsoluteUri);
         }
       }
+    }
+
+    private string GetResponse()
+    {
+      Console.Write("=> ");
+      return Console.ReadLine().ToLower();
     }
   }
 }

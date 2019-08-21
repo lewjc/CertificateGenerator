@@ -1,4 +1,5 @@
-﻿using Org.BouncyCastle.Asn1.X509;
+﻿using NLog;
+using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Operators;
@@ -9,12 +10,7 @@ using Org.BouncyCastle.Utilities;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.X509.Extension;
 using System;
-using System.ComponentModel;
-using System.Runtime.InteropServices.ComTypes;
-using NLog;
 using System.Security.Cryptography.X509Certificates;
-using Org.BouncyCastle.Crypto.Digests;
-using Org.BouncyCastle.Crypto.Tls;
 using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
 namespace CertificateUtility
@@ -113,7 +109,7 @@ namespace CertificateUtility
     public CertificateBuilder AddSerialNumber(BigInteger serial)
     {
       certificateGenerator.SetSerialNumber(serial);
-      logger.Debug($"[SERIAL NUMBER] = {serial}");
+      logger.Debug($"[ADD SERIAL NUMBER]");
       return this;
     }
 
@@ -150,7 +146,7 @@ namespace CertificateUtility
     /// <returns></returns>
     public CertificateBuilder AddCRLDistributionPoint(string url)
     {
-      return AddCRLDistributionPoints(new string[] {url});
+      return AddCRLDistributionPoints(new string[] { url });
     }
 
     /// <summary>
@@ -164,7 +160,7 @@ namespace CertificateUtility
       for (int i = 0; i < urls.Length; i++)
       {
         string url = urls[i];
-        var name = new GeneralName(GeneralName.UniformResourceIdentifier, url);
+        var name = new GeneralName(GeneralName.UniformResourceIdentifier, url.Trim());
         var dpName = new DistributionPointName(DistributionPointName.FullName, name);
         dps[i] = new DistributionPoint(dpName, null, null);
         logger.Debug($"[ADD DISTRIBUTION POINT] => {url}");
@@ -184,7 +180,7 @@ namespace CertificateUtility
     {
       var akid = new AuthorityKeyIdentifierStructure(publicKey);
       certificateGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, akid);
-      logger.Debug($"[ADD AKID] {akid.AuthorityCertSerialNumber}");
+      logger.Debug($"[AUTHORITY KEY IDENTIFIER] {akid.ToString()}");
       return this;
     }
 
@@ -200,7 +196,7 @@ namespace CertificateUtility
         X509ObjectIdentifiers.CrlAccessMethod,
         new GeneralName(GeneralName.UniformResourceIdentifier, certificateUrl)));
       certificateGenerator.AddExtension(X509Extensions.AuthorityInfoAccess, false, authAccess);
-      logger.Debug($"[ADD AUTHORITY LOCATION] {certificateUrl}");
+      logger.Debug($"[AUTHORITY LOCATION] {certificateUrl}");
       return this;
     }
 
@@ -210,7 +206,7 @@ namespace CertificateUtility
     /// <returns></returns>
     public CertificateBuilder AddValidityTime()
     {
-     return AddValidityTime(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddYears(50));
+      return AddValidityTime(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddYears(50));
     }
 
     /// <summary>
@@ -233,7 +229,7 @@ namespace CertificateUtility
     /// <returns></returns>
     public CertificateBuilder AddExtendedKeyUsages()
     {
-      return AddExtendedKeyUsages(new[] {KeyPurposeID.AnyExtendedKeyUsage});
+      return AddExtendedKeyUsages(new[] { KeyPurposeID.AnyExtendedKeyUsage });
     }
 
     /// <summary>
@@ -248,7 +244,7 @@ namespace CertificateUtility
 
       for (int idx = 0; idx < extendedKeyUsages.Length; idx++)
       {
-        logger.Debug($"[ADD EXTENDED KEY USAGE] {extendedKeyUsages[idx]}");
+        logger.Debug($"[EXTENDED KEY USAGE] {extendedKeyUsages[idx].ToString()}");
       }
       return this;
     }
@@ -259,8 +255,8 @@ namespace CertificateUtility
     public CertificateBuilder MakeCA()
     {
       AddBasicConstraints(true);
-      AddKeyUsages((int) (X509KeyUsageFlags.CrlSign | X509KeyUsageFlags.KeyCertSign));
-      logger.Debug($"[CREATING CA]");
+      AddKeyUsages((int)(X509KeyUsageFlags.CrlSign | X509KeyUsageFlags.KeyCertSign));
+      logger.Debug($"[MAKING CA]");
       return this;
     }
 
@@ -272,7 +268,7 @@ namespace CertificateUtility
     {
       var skid = new SubjectKeyIdentifierStructure(keyPair.Public);
       certificateGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, skid);
-      logger.Debug($"[SUBJECT KEY IDENTIFIER] {skid.ToString()}");
+      logger.Debug($"[ADD SUBJECT KEY IDENTIFIER]");
       return this;
     }
 

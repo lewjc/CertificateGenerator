@@ -8,6 +8,7 @@ using NLog;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Prng;
 using Org.BouncyCastle.Security;
+using System.Linq;
 
 namespace CertificateGenerator
 {
@@ -42,7 +43,7 @@ namespace CertificateGenerator
       }
 
       var issuingKeyPair = DotNetUtilities.GetKeyPair(storeCertificate.PrivateKey);
-      string[] dpUrls = MenuInterupts.GetCrlDistributionPoints();
+      string[] dpUrls = Options.DistributionPoints.Count() > 0 ? Options.DistributionPoints.ToArray() : MenuInterupts.GetCrlDistributionPoints();
 
       var bcCertificate = builder
         .AddSKID()
@@ -57,6 +58,14 @@ namespace CertificateGenerator
         .Generate(issuingKeyPair.Private, out AsymmetricCipherKeyPair generatedKeyPair);
 
       var convertedCertificate = GetWindowsCertFromGenerated(bcCertificate, Options.CommonName, generatedKeyPair.Private, builder.SecureRandom);
+
+      if (Options.Debug)
+      {
+        DisplayCertificateDebugInfo(convertedCertificate);
+      }
+
+      X509Chain chain = new X509Chain();
+      chain.Build(convertedCertificate);
 
       if (!string.IsNullOrEmpty(Options.ExportLocation))
       {

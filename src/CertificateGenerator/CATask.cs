@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Security.Certificates;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using NLog;
 using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
@@ -25,7 +26,9 @@ namespace CertificateGenerator
       bool isRoot = string.IsNullOrEmpty(Options.IssuerName);
       var builder = new CertificateBuilder(Options.KeyStrength, Options.SignatureAlgorithm, Logger);
       X509Certificate bcCertificate;
+      // Key pair of the issuing certificate.
       AsymmetricCipherKeyPair issuingKeyPair = null;
+      // Key pair for the generated certificate.
       AsymmetricCipherKeyPair generatedKeyPair = null;
       X509Certificate2 storeCertificate = null;
 
@@ -54,9 +57,9 @@ namespace CertificateGenerator
             "Provided certificate is not a valid CA and therefore cannot issue other certificates.");
         }
 
-        issuingKeyPair = DotNetUtilities.GetKeyPair(storeCertificate.PrivateKey); ;
+        issuingKeyPair = DotNetUtilities.GetKeyPair(storeCertificate.PrivateKey);
 
-        string[] dpUrls = Options.DistributionPoints.Length > 0 ? Options.DistributionPoints : MenuInterupts.GetCrlDistributionPoints();
+        string[] dpUrls = Options.DistributionPoints.Count() > 0 ? Options.DistributionPoints.ToArray(): MenuInterupts.GetCrlDistributionPoints();
 
         bcCertificate = builder
           .AddSKID()
@@ -73,6 +76,11 @@ namespace CertificateGenerator
 
       var convertedCertificate = GetWindowsCertFromGenerated(bcCertificate,
         Options.CommonName, isRoot ? issuingKeyPair.Private : generatedKeyPair.Private, builder.SecureRandom);
+
+      if (Options.Debug)
+      {
+        DisplayCertificateDebugInfo(convertedCertificate);
+      }
 
       if (!string.IsNullOrEmpty(Options.ExportLocation))
       {
@@ -97,12 +105,14 @@ namespace CertificateGenerator
 
       if (generateCrl)
       {
+        var crlKeyPair = isRoot ? issuingKeyPair : generatedKeyPair;
+
         var crlBuilder = new CrlBuilder();
         var crl = crlBuilder
-          .AddIssuerName(isRoot ? Options.CommonName : Options.IssuerName)
+          .AddIssuerName(Options.CommonName)
           .AddUpdatePeriod()
-          .AddAKID(issuingKeyPair.Public)
-          .Generate(issuingKeyPair.Private);
+          .AddAKID(crlKeyPair.Public)
+          .Generate(crlKeyPair.Private);
 
         var crlPostFix = Configuration["certificateSettings:crlPostFix"];
         var exportPath = Path.Join(Configuration["certificateSettings:crlExportPath"],
