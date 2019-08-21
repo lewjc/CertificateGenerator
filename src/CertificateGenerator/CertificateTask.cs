@@ -4,15 +4,16 @@ using Org.BouncyCastle.Security.Certificates;
 using System;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
+using NLog;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Prng;
 using Org.BouncyCastle.Security;
 
 namespace CertificateGenerator
 {
-  internal class CertificateTask : BaseCertificateTask<CertGen>
+  internal class CertificateTask : BaseCertificateTask<CertificateOptions>
   {
-    public CertificateTask(CertGen opts, IConfiguration configuration) : base(opts, configuration)
+    public CertificateTask(CertificateOptions opts, IConfiguration configuration, LogFactory logger) : base(opts, configuration, logger)
     {
 
     }
@@ -31,12 +32,13 @@ namespace CertificateGenerator
     {
       // Builder path for normal certificate.
       var storeCertificate = LoadCACertificate(Options.IssuerName);
-      var builder = new CertificateBuilder(Options.KeyStrength, Options.SignatureAlgorithm);
+      var builder = new CertificateBuilder(Options.KeyStrength, Options.SignatureAlgorithm, Logger);
     
       if (!ValidateIssuer(storeCertificate))
       {
+        Logger.Error("Provided issuer is not a valid CA and therefore cannot issue other certificates.");
         throw new CertificateException(
-          "Provided certificate is not a valid CA and therefore cannot issue other certificates.");
+          "Provided issuer is not a valid CA and therefore cannot issue other certificates.");
       }
 
       var issuingKeyPair = DotNetUtilities.GetKeyPair(storeCertificate.PrivateKey);

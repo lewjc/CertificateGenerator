@@ -6,6 +6,7 @@ using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.X509.Extension;
 using System;
+using NLog;
 
 namespace CertificateUtility
 {

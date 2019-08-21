@@ -2,7 +2,7 @@
   "profiles": {
     "CertificateGenerator": {
       "commandName": "Project",
-      "commandLineArgs": "CA --commonname BOCCONNECT --parentCA LewisIntermediate2CA "
+      "commandLineArgs": "CA --commonname LewisRootCA --debug true"
     }
   }
 }

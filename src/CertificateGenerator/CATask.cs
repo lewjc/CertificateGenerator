@@ -1,29 +1,29 @@
 ﻿using CertificateUtility;
 using Microsoft.Extensions.Configuration;
 using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Security.Certificates;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
+using NLog;
 using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
 namespace CertificateGenerator
 {
-  internal class CATask : BaseCertificateTask<CAGen>
+  internal class CATask : BaseCertificateTask<CAOptions>
   {
-    public CATask(CAGen opts, IConfiguration configuration) : base(opts, configuration)
+    public CATask(CAOptions opts, IConfiguration configuration, LogFactory logFactory) : base(opts, configuration, logFactory)
     {
     }
 
     protected override int Run()
-    {
+    { 
       return InternalRun();
     }
 
     private int InternalRun()
     {
       bool isRoot = string.IsNullOrEmpty(Options.IssuerName);
-      var builder = new CertificateBuilder(Options.KeyStrength, Options.SignatureAlgorithm);
+      var builder = new CertificateBuilder(Options.KeyStrength, Options.SignatureAlgorithm, Logger);
       X509Certificate bcCertificate;
       AsymmetricCipherKeyPair issuingKeyPair = null;
       AsymmetricCipherKeyPair generatedKeyPair = null;
@@ -46,7 +46,7 @@ namespace CertificateGenerator
       else
       {
         storeCertificate = LoadCACertificate(Options.IssuerName);
-        builder = new CertificateBuilder(Options.KeyStrength, Options.SignatureAlgorithm);
+        builder = new CertificateBuilder(Options.KeyStrength, Options.SignatureAlgorithm, Logger);
 
         if (!ValidateIssuer(storeCertificate))
         {
@@ -56,7 +56,7 @@ namespace CertificateGenerator
 
         issuingKeyPair = DotNetUtilities.GetKeyPair(storeCertificate.PrivateKey); ;
 
-        string[] dpUrls = MenuInterupts.GetCrlDistributionPoints();
+        string[] dpUrls = Options.DistributionPoints.Length > 0 ? Options.DistributionPoints : MenuInterupts.GetCrlDistributionPoints();
 
         bcCertificate = builder
           .AddSKID()
@@ -65,9 +65,9 @@ namespace CertificateGenerator
           .AddExtendedKeyUsages()
           .AddSubjectCommonName(Options.CommonName)
           .AddIssuerCommonName(Options.IssuerName) // Generate from CA.
-          .MakeCA()
           .AddAKID(issuingKeyPair.Public)
           .AddCRLDistributionPoints(dpUrls)
+          .MakeCA()
           .Generate(issuingKeyPair.Private, out generatedKeyPair);
       }
 
@@ -76,6 +76,7 @@ namespace CertificateGenerator
 
       if (!string.IsNullOrEmpty(Options.ExportLocation))
       {
+        // Export the certificate to the 
         var exportPath =
           Path.Combine($"{Options.ExportLocation}", $"{Helper.StringToCNString(Options.CommonName)}.pfx");
         File.WriteAllBytes(exportPath, convertedCertificate.Export(X509ContentType.Pkcs12));
@@ -91,7 +92,8 @@ namespace CertificateGenerator
         machineStore.Close();
       }
 
-      bool generateCrl = MenuInterupts.GetCrlChoice();
+      // Get our crl choice for this certificate authority.
+      bool generateCrl = Options.GenerateCRL ? Options.GenerateCRL : MenuInterupts.GetCrlChoice();
 
       if (generateCrl)
       {

@@ -1,6 +1,6 @@
 ﻿using CertificateUtility;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+using NLog;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
+using NLog.Fluent;
 
 namespace CertificateGenerator
 {
@@ -28,11 +29,12 @@ namespace CertificateGenerator
 
     protected MenuInterupts MenuInterupts { get; set; }
 
-    protected BaseCertificateTask(TOptions opts, IConfiguration configuration)
+    protected BaseCertificateTask(TOptions opts, IConfiguration configuration, LogFactory logFactory)
     {
       Options = opts;
       Configuration = configuration;
-      MenuInterupts = new MenuInterupts();
+      Logger = logFactory.GetLogger(GetType().Name);
+      MenuInterupts = new MenuInterupts(Logger);
     }
 
     public int Execute()
@@ -53,12 +55,12 @@ namespace CertificateGenerator
       }
       catch (Exception e)
       {
-        Console.WriteLine(e.Message);
+        Logger.Info(e.Message);
         return FAIL;
       }
       finally
       {
-        Console.WriteLine("[ANY KEY TO EXIT]");
+        Logger.Info("[ANY KEY TO EXIT]");
         Console.ReadLine();
       }
     }

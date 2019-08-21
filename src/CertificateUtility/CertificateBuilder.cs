@@ -10,6 +10,8 @@ using Org.BouncyCastle.X509;
 using Org.BouncyCastle.X509.Extension;
 using System;
 using System.ComponentModel;
+using System.Runtime.InteropServices.ComTypes;
+using NLog;
 using System.Security.Cryptography.X509Certificates;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Tls;
@@ -29,12 +31,15 @@ namespace CertificateUtility
 
     private AsymmetricCipherKeyPair keyPair;
 
+    private readonly ILogger logger;
+
     /// <summary>
     /// Default constructer, uses default certificate parameters
     /// </summary>
-    public CertificateBuilder()
+    public CertificateBuilder(ILogger logger)
     {
       // Default Key Strength.
+      this.logger = logger;
       keyStrength = DefaultCertificateParameters.KeyStrength;
       signatureAlgorithm = DefaultCertificateParameters.SignatureAlgorithm;
       Init();
@@ -44,9 +49,10 @@ namespace CertificateUtility
     /// Allows for custom key strength to be provided.
     /// </summary>
     /// <param name="keyStrength"></param>
-    public CertificateBuilder(int keyStrength)
+    public CertificateBuilder(int keyStrength, ILogger logger)
     {
       this.keyStrength = keyStrength;
+      this.logger = logger;
       signatureAlgorithm = DefaultCertificateParameters.SignatureAlgorithm;
       Init();
     }
@@ -55,9 +61,10 @@ namespace CertificateUtility
     /// Allows for a custom signature algorithm to be provided.
     /// </summary>
     /// <param name="signatureAlgorithm"></param>
-    public CertificateBuilder(string signatureAlgorithm)
+    public CertificateBuilder(string signatureAlgorithm, ILogger logger)
     {
       this.signatureAlgorithm = signatureAlgorithm;
+      this.logger = logger;
       keyStrength = DefaultCertificateParameters.KeyStrength;
       Init();
     }
@@ -67,10 +74,11 @@ namespace CertificateUtility
     /// </summary>
     /// <param name="keyStrength"></param>
     /// <param name="signatureAlgorithm"></param>
-    public CertificateBuilder(int keyStrength, string signatureAlgorithm)
+    public CertificateBuilder(int keyStrength, string signatureAlgorithm, ILogger logger)
     {
       this.keyStrength = keyStrength;
       this.signatureAlgorithm = signatureAlgorithm;
+      this.logger = logger;
       Init();
     }
 
@@ -94,8 +102,7 @@ namespace CertificateUtility
     /// <returns></returns>
     public CertificateBuilder AddSerialNumber()
     {
-      certificateGenerator.SetSerialNumber(BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), SecureRandom));
-      return this;
+      return AddSerialNumber(BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), SecureRandom));
     }
 
     /// <summary>
@@ -106,6 +113,7 @@ namespace CertificateUtility
     public CertificateBuilder AddSerialNumber(BigInteger serial)
     {
       certificateGenerator.SetSerialNumber(serial);
+      logger.Debug($"[SERIAL NUMBER] = {serial}");
       return this;
     }
 
@@ -116,7 +124,9 @@ namespace CertificateUtility
     /// <returns></returns>
     public CertificateBuilder AddIssuerCommonName(string commonName)
     {
-      certificateGenerator.SetIssuerDN(new X509Name(Helper.StringToCNString(commonName)));
+      var issuer = Helper.StringToCNString(commonName);
+      certificateGenerator.SetIssuerDN(new X509Name(issuer));
+      logger.Debug($"[ISSUER CN] = {issuer}");
       return this;
     }
 
@@ -127,7 +137,9 @@ namespace CertificateUtility
     /// <returns></returns>
     public CertificateBuilder AddSubjectCommonName(string commonName)
     {
-      certificateGenerator.SetSubjectDN(new X509Name(Helper.StringToCNString(commonName)));
+      var subject = Helper.StringToCNString(commonName);
+      certificateGenerator.SetSubjectDN(new X509Name(subject));
+      logger.Debug($"[SUBJECT CN] = {subject}");
       return this;
     }
 
@@ -151,10 +163,13 @@ namespace CertificateUtility
       var dps = new DistributionPoint[urls.Length];
       for (int i = 0; i < urls.Length; i++)
       {
-        var name = new GeneralName(GeneralName.UniformResourceIdentifier, urls[i]);
+        string url = urls[i];
+        var name = new GeneralName(GeneralName.UniformResourceIdentifier, url);
         var dpName = new DistributionPointName(DistributionPointName.FullName, name);
         dps[i] = new DistributionPoint(dpName, null, null);
+        logger.Debug($"[ADD DISTRIBUTION POINT] => {url}");
       }
+
       certificateGenerator.AddExtension(X509Extensions.CrlDistributionPoints, false, new CrlDistPoint(dps));
       return this;
     }
@@ -167,7 +182,9 @@ namespace CertificateUtility
     /// <returns></returns>
     public CertificateBuilder AddAKID(AsymmetricKeyParameter publicKey)
     {
-      certificateGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(publicKey));
+      var akid = new AuthorityKeyIdentifierStructure(publicKey);
+      certificateGenerator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, akid);
+      logger.Debug($"[ADD AKID] {akid.AuthorityCertSerialNumber}");
       return this;
     }
 
@@ -183,6 +200,7 @@ namespace CertificateUtility
         X509ObjectIdentifiers.CrlAccessMethod,
         new GeneralName(GeneralName.UniformResourceIdentifier, certificateUrl)));
       certificateGenerator.AddExtension(X509Extensions.AuthorityInfoAccess, false, authAccess);
+      logger.Debug($"[ADD AUTHORITY LOCATION] {certificateUrl}");
       return this;
     }
 
@@ -205,6 +223,7 @@ namespace CertificateUtility
     {
       certificateGenerator.SetNotBefore(notBefore);
       certificateGenerator.SetNotAfter(notAfter);
+      logger.Debug($"[CERTIFICATE VALID FROM] {notBefore.Date} [TO] {notAfter.Date}");
       return this;
     }
 
@@ -214,9 +233,7 @@ namespace CertificateUtility
     /// <returns></returns>
     public CertificateBuilder AddExtendedKeyUsages()
     {
-      certificateGenerator.AddExtension(oid: X509Extensions.ExtendedKeyUsage.Id,
-        critical: false, extensionValue: new ExtendedKeyUsage(new[] { KeyPurposeID.AnyExtendedKeyUsage }));
-      return this;
+      return AddExtendedKeyUsages(new[] {KeyPurposeID.AnyExtendedKeyUsage});
     }
 
     /// <summary>
@@ -228,6 +245,11 @@ namespace CertificateUtility
     {
       certificateGenerator.AddExtension(oid: X509Extensions.ExtendedKeyUsage.Id,
         critical: false, extensionValue: new ExtendedKeyUsage(extendedKeyUsages));
+
+      for (int idx = 0; idx < extendedKeyUsages.Length; idx++)
+      {
+        logger.Debug($"[ADD EXTENDED KEY USAGE] {extendedKeyUsages[idx]}");
+      }
       return this;
     }
 
@@ -238,19 +260,26 @@ namespace CertificateUtility
     {
       AddBasicConstraints(true);
       AddKeyUsages((int) (X509KeyUsageFlags.CrlSign | X509KeyUsageFlags.KeyCertSign));
-      return this;
-    }
-
-    public CertificateBuilder AddSKID()
-    {      
-      certificateGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifierStructure(keyPair.Public));
+      logger.Debug($"[CREATING CA]");
       return this;
     }
 
     /// <summary>
-    /// 
+    /// Adds a subject key identifier to the certificate. This is a hash value of the public key.
     /// </summary>
-    /// <param name="keyUsages"></param>
+    /// <returns></returns>
+    public CertificateBuilder AddSKID()
+    {
+      var skid = new SubjectKeyIdentifierStructure(keyPair.Public);
+      certificateGenerator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, skid);
+      logger.Debug($"[SUBJECT KEY IDENTIFIER] {skid.ToString()}");
+      return this;
+    }
+
+    /// <summary>
+    /// Add key usages to the certificate
+    /// </summary>
+    /// <param name="keyUsages"> Integer of chained flags. EXAMPLE: X509KeyUsageFlags.One | X509KeyUsageFlags.Two</param>
     /// <returns></returns>
     public CertificateBuilder AddKeyUsages(int keyUsages)
     {
@@ -262,12 +291,11 @@ namespace CertificateUtility
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="CA"></param>
+    /// <param name="CA">Whether or not to add CA basic constraints.</param>
     /// <returns></returns>
     public CertificateBuilder AddBasicConstraints(bool CA = false)
     {
-      var caConstraint = new BasicConstraints(CA);
-      certificateGenerator.AddExtension(X509Extensions.BasicConstraints.Id, false, caConstraint);
+      certificateGenerator.AddExtension(X509Extensions.BasicConstraints.Id, false, new BasicConstraints(CA));
       return this;
     }
 
@@ -277,8 +305,8 @@ namespace CertificateUtility
     /// <returns></returns>
     public X509Certificate GenerateRoot()
     {
-      ISignatureFactory signatureFactory = new Asn1SignatureFactory(signatureAlgorithm, keyPair.Private, SecureRandom);
-      return certificateGenerator.Generate(signatureFactory);
+      logger.Debug($"[GENERATING ROOT]");
+      return Generate(keyPair.Private, out AsymmetricCipherKeyPair @params);
     }
 
     /// <summary>

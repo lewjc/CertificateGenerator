@@ -1,16 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security.Cryptography.X509Certificates;
+using NLog;
 
 namespace CertificateGenerator
 {
   internal class MenuInterupts
   {
+
+    private readonly ILogger logger;
+
+    internal MenuInterupts(ILogger logger)
+    {
+
+    }
+
     public bool GetCrlChoice()
     {
       bool? choice = null;
       while (choice == null)
       {
-        Console.WriteLine("Would you like to generate a CRL for this CA? [y]/[n]: ");
+        logger.Info("Would you like to generate a CRL for this CA? [y]/[n]: ");
         string response = Console.ReadLine().ToLower();
 
         switch (response)
@@ -24,7 +34,7 @@ namespace CertificateGenerator
             break;
 
           default:
-            Console.WriteLine("Invalid");
+            logger.Error("Invalid Choice");
             break;
         }
       }
@@ -35,7 +45,7 @@ namespace CertificateGenerator
     public string[] GetCrlDistributionPoints()
     {
       var dps = new List<string>();
-      Console.WriteLine("Please provide atleast one URL for your certificate revocation lists. Press [X] when done.");
+      logger.Info("Please provide atleast one URL for your certificate revocation lists. Press [X] when done.");
       while (true)
       {
         string response = Console.ReadLine().ToLower();
@@ -50,11 +60,11 @@ namespace CertificateGenerator
                           url.Scheme == Uri.UriSchemeHttps;
           if (!validUrl)
           {
-            Console.WriteLine("Invalid Url.");
+            logger.Error("Invalid Url.");
             continue;
           }
 
-          Console.WriteLine($"Valid Url added => {url.AbsoluteUri}");
+          logger.Info($"Valid Url added => {url.AbsoluteUri}");
           dps.Add(url.AbsoluteUri);
         }
       }

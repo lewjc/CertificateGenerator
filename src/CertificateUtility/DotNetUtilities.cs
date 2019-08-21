@@ -1,7 +1,13 @@
-﻿using System;
+﻿/*
+ * BOUNCY CASTLE DOT NET UTILITIES CLASS
+ * =====================================
+ * Does not currently exist in their .net core nuget
+ * So i have ported over the code to use for the time being.
+ */
+
+using System;
 using System.Security.Cryptography;
 using SystemX509 = System.Security.Cryptography.X509Certificates;
-
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
@@ -184,8 +190,11 @@ namespace CertificateUtility
 
     public static RSAParameters ToRSAParameters(RsaKeyParameters rsaKey)
     {
-      RSAParameters rp = new RSAParameters();
-      rp.Modulus = rsaKey.Modulus.ToByteArrayUnsigned();
+      RSAParameters rp = new RSAParameters
+      {
+        Modulus = rsaKey.Modulus.ToByteArrayUnsigned()
+      };
+
       if (rsaKey.IsPrivate)
         rp.D = ConvertRSAParametersField(rsaKey.Exponent, rp.Modulus.Length);
       else
@@ -195,11 +204,13 @@ namespace CertificateUtility
 
     public static RSAParameters ToRSAParameters(RsaPrivateCrtKeyParameters privKey)
     {
-      RSAParameters rp = new RSAParameters();
-      rp.Modulus = privKey.Modulus.ToByteArrayUnsigned();
-      rp.Exponent = privKey.PublicExponent.ToByteArrayUnsigned();
-      rp.P = privKey.P.ToByteArrayUnsigned();
-      rp.Q = privKey.Q.ToByteArrayUnsigned();
+      RSAParameters rp = new RSAParameters
+      {
+        Modulus = privKey.Modulus.ToByteArrayUnsigned(),
+        Exponent = privKey.PublicExponent.ToByteArrayUnsigned(),
+        P = privKey.P.ToByteArrayUnsigned(),
+        Q = privKey.Q.ToByteArrayUnsigned()
+      };
       rp.D = ConvertRSAParametersField(privKey.Exponent, rp.Modulus.Length);
       rp.DP = ConvertRSAParametersField(privKey.DP, rp.P.Length);
       rp.DQ = ConvertRSAParametersField(privKey.DQ, rp.Q.Length);
@@ -209,11 +220,13 @@ namespace CertificateUtility
 
     public static RSAParameters ToRSAParameters(RsaPrivateKeyStructure privKey)
     {
-      RSAParameters rp = new RSAParameters();
-      rp.Modulus = privKey.Modulus.ToByteArrayUnsigned();
-      rp.Exponent = privKey.PublicExponent.ToByteArrayUnsigned();
-      rp.P = privKey.Prime1.ToByteArrayUnsigned();
-      rp.Q = privKey.Prime2.ToByteArrayUnsigned();
+      RSAParameters rp = new RSAParameters
+      {
+        Modulus = privKey.Modulus.ToByteArrayUnsigned(),
+        Exponent = privKey.PublicExponent.ToByteArrayUnsigned(),
+        P = privKey.Prime1.ToByteArrayUnsigned(),
+        Q = privKey.Prime2.ToByteArrayUnsigned()
+      };
       rp.D = ConvertRSAParametersField(privKey.PrivateExponent, rp.Modulus.Length);
       rp.DP = ConvertRSAParametersField(privKey.Exponent1, rp.P.Length);
       rp.DQ = ConvertRSAParametersField(privKey.Exponent2, rp.Q.Length);
@@ -239,8 +252,11 @@ namespace CertificateUtility
 
     private static RSA CreateRSAProvider(RSAParameters rp)
     {
-      CspParameters csp = new CspParameters();
-      csp.KeyContainerName = string.Format("BouncyCastle-{0}", Guid.NewGuid());
+      CspParameters csp = new CspParameters
+      {
+        KeyContainerName = string.Format("BouncyCastle-{0}", Guid.NewGuid())
+      };
+
       RSACryptoServiceProvider rsaCsp = new RSACryptoServiceProvider(csp);
       rsaCsp.ImportParameters(rp);
       return rsaCsp;
