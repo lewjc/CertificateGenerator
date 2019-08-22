@@ -118,6 +118,7 @@ namespace CertificateGenerator
         var exportPath = Path.Join(Configuration["certificateSettings:crlExportPath"],
           $"{Options.CommonName}{crlPostFix}.crl");
         File.WriteAllBytes(exportPath, crl.GetEncoded());
+        Logger.Info($"CRL Generated at {exportPath}");
       }
 
       return SUCCESS;

@@ -27,15 +27,14 @@ namespace CertificateUtility
 
     private AsymmetricCipherKeyPair keyPair;
 
-    private readonly ILogger logger;
+    private ILogger logger;
 
     /// <summary>
     /// Default constructer, uses default certificate parameters
     /// </summary>
-    public CertificateBuilder(ILogger logger)
+    public CertificateBuilder()
     {
       // Default Key Strength.
-      this.logger = logger;
       keyStrength = DefaultCertificateParameters.KeyStrength;
       signatureAlgorithm = DefaultCertificateParameters.SignatureAlgorithm;
       Init();
@@ -45,10 +44,9 @@ namespace CertificateUtility
     /// Allows for custom key strength to be provided.
     /// </summary>
     /// <param name="keyStrength"></param>
-    public CertificateBuilder(int keyStrength, ILogger logger)
+    public CertificateBuilder(int keyStrength)
     {
       this.keyStrength = keyStrength;
-      this.logger = logger;
       signatureAlgorithm = DefaultCertificateParameters.SignatureAlgorithm;
       Init();
     }
@@ -85,6 +83,7 @@ namespace CertificateUtility
     {
       SecureRandom = new SecureRandom(new CryptoApiRandomGenerator());
       certificateGenerator = new X509V3CertificateGenerator();
+      logger = LogManager.GetCurrentClassLogger();
       var keyGenerationParameters = new KeyGenerationParameters(SecureRandom, keyStrength);
       var keyPairGenerator = new RsaKeyPairGenerator();
       keyPairGenerator.Init(keyGenerationParameters);
